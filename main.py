@@ -43,6 +43,8 @@ DEX_PROGRAMS = [
 last_sigs = {}
 token_cache = {}
 
+# === UTILS ===
+
 def send_telegram(msg):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
     r = requests.post(url, data={
@@ -67,12 +69,13 @@ def get_token_name(mint):
     except:
         return "Unknown"
 
-# === Solana ===
+# === SOLANA ===
+
 def get_sol_sig(wallet):
     url = f"https://api.helius.xyz/v0/addresses/{wallet}/transactions?api-key={HELIUS_API_KEY}&limit=1"
     res = requests.get(url).json()
-    if res:
-        return res[0]["signature"]
+    if isinstance(res, list) and len(res) > 0:
+        return res[0].get("signature")
     return None
 
 def check_sol_buy(wallet, sig):
@@ -98,12 +101,13 @@ def check_sol_buy(wallet, sig):
                 f"Amount: `{change['dblTokenAmount']}`"
             )
 
-# === Base ===
+# === BASE ===
+
 def get_base_sig(wallet):
     url = f"https://api.helius.xyz/v0/addresses/{wallet}/transactions?api-key={HELIUS_API_KEY}&limit=1"
     res = requests.get(url).json()
-    if res:
-        return res[0]["signature"]
+    if isinstance(res, list) and len(res) > 0:
+        return res[0].get("signature")
     return None
 
 def check_base_transfer(wallet, sig):
@@ -121,6 +125,7 @@ def check_base_transfer(wallet, sig):
             )
 
 # === MAIN ===
+
 def main():
     print("🚀 Starting Multi-Chain Bot...")
 
