@@ -33,17 +33,15 @@ TELEGRAM_CHAT_ID = os.getenv("TELEGRAM_CHAT_ID")
 TOKEN_META_URL = f"https://api.helius.xyz/v0/tokens/metadata?api-key={HELIUS_API_KEY}"
 
 DEX_PROGRAMS = [
-    "9xQeWvG816bUx9EPXfnD8Z4t4d3ZCvK5dXA7CzA5kNtP",  # Serum
-    "RVKd61ztZW9CQbKzM3dTzQz3fBipEcXP2eaXfKenD5n",  # Raydium
-    "5quB64YFxhYSgXyRRc1rLZNR5pczcxowhTQNJjTCvWvb",  # Jupiter
-    "4ckmDgGz5g9wnZ2gGdnCrpzo6q2ketskkvM5RDwQGy2T",  # Orca
-    "DVa7gZhU7mD94GLg1DZcJqWQUGzM9BXhCM3QxSK9V1bA",  # Meteora
+    "9xQeWvG816bUx9EPXfnD8Z4t4d3ZCvK5dXA7CzA5kNtP",
+    "RVKd61ztZW9CQbKzM3dTzQz3fBipEcXP2eaXfKenD5n",
+    "5quB64YFxhYSgXyRRc1rLZNR5pczcxowhTQNJjTCvWvb",
+    "4ckmDgGz5g9wnZ2gGdnCrpzo6q2ketskkvM5RDwQGy2T",
+    "DVa7gZhU7mD94GLg1DZcJqWQUGzM9BXhCM3QxSK9V1bA"
 ]
 
 last_sigs = {}
 token_cache = {}
-
-# === HELPERS ===
 
 def send_telegram(msg):
     url = f"https://api.telegram.org/bot{TELEGRAM_BOT_TOKEN}/sendMessage"
@@ -69,11 +67,13 @@ def get_token_name(mint):
     except:
         return "Unknown"
 
-# === SOLANA ===
-
+# === Solana ===
 def get_sol_sig(wallet):
     url = f"https://api.helius.xyz/v0/addresses/{wallet}/transactions?api-key={HELIUS_API_KEY}&limit=1"
-    return requests.get(url).json()[0]["signature"]
+    res = requests.get(url).json()
+    if res:
+        return res[0]["signature"]
+    return None
 
 def check_sol_buy(wallet, sig):
     url = f"https://api.helius.xyz/v0/transactions/{sig}?api-key={HELIUS_API_KEY}"
@@ -98,11 +98,13 @@ def check_sol_buy(wallet, sig):
                 f"Amount: `{change['dblTokenAmount']}`"
             )
 
-# === BASE ===
-
+# === Base ===
 def get_base_sig(wallet):
     url = f"https://api.helius.xyz/v0/addresses/{wallet}/transactions?api-key={HELIUS_API_KEY}&limit=1"
-    return requests.get(url).json()[0]["signature"]
+    res = requests.get(url).json()
+    if res:
+        return res[0]["signature"]
+    return None
 
 def check_base_transfer(wallet, sig):
     url = f"https://api.helius.xyz/v0/transactions/{sig}?api-key={HELIUS_API_KEY}"
@@ -119,29 +121,29 @@ def check_base_transfer(wallet, sig):
             )
 
 # === MAIN ===
-
 def main():
     print("🚀 Starting Multi-Chain Bot...")
 
     for wallet in SOLANA_WALLETS + BASE_WALLETS:
-        last_sigs[wallet] = get_sol_sig(wallet) if wallet in SOLANA_WALLETS else get_base_sig(wallet)
+        sig = get_sol_sig(wallet) if wallet in SOLANA_WALLETS else get_base_sig(wallet)
+        last_sigs[wallet] = sig
+        print(f"Tracking {wallet} — latest sig: {sig}")
 
     while True:
         try:
             for wallet in SOLANA_WALLETS:
                 sig = get_sol_sig(wallet)
-                if sig != last_sigs[wallet]:
+                if sig and sig != last_sigs[wallet]:
                     check_sol_buy(wallet, sig)
                     last_sigs[wallet] = sig
 
             for wallet in BASE_WALLETS:
                 sig = get_base_sig(wallet)
-                if sig != last_sigs[wallet]:
+                if sig and sig != last_sigs[wallet]:
                     check_base_transfer(wallet, sig)
                     last_sigs[wallet] = sig
 
             time.sleep(10)
-
         except Exception as e:
             print("❌ Error:", e)
             time.sleep(20)
